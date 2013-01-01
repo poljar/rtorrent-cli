@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS := -Wall -Wextra -pedantic -std=gnu99 -g $(CFLAGS)
+CFLAGS := -Wall -Wextra -pedantic -std=c99 -g $(CFLAGS) -D_POSIX_SOURCE
 LDLIBS := -lxmlrpc -lxmlrpc_util -lxmlrpc_client
 
 SRC = util.c scgi_proxy.c xmlrpc_client.c rtorrent-cli.c
