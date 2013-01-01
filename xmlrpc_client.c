@@ -59,7 +59,7 @@ static void parse_xml(xmlrpc_env *env, char *xml, int xml_size, xmlrpc_value **r
 }
 
 xmlrpc_value *xmlrpc_call_scgi_server_params(xmlrpc_env *env, const char *server, const char *port, const char *method, xmlrpc_value *param) {
-    int sockfd, fault_code;
+    int sockfd = -1, fault_code;
     char *buff = NULL;
     xmlrpc_value *result = NULL;
     const char *fault_string = NULL;
@@ -92,7 +92,8 @@ xmlrpc_value *xmlrpc_call_scgi_server_params(xmlrpc_env *env, const char *server
     parse_xml(env, buff, strlen(buff), &result, &fault_code, &fault_string);
         
 finish:
-    close(sockfd);
+    if (sockfd != -1)
+        close(sockfd);
 
     xfree(buff);
     xfree((char*) fault_string);
