@@ -1,8 +1,18 @@
 CC=gcc
-CFLAGS := -Wall -Wextra -pedantic -std=c99 -g $(CFLAGS)
+CFLAGS := -Wall -Wextra -pedantic -std=gnu99 -g $(CFLAGS)
 LDLIBS := -lxmlrpc -lxmlrpc_util -lxmlrpc_client
 
-rtorrent-cli: rtorrent-cli.o
+SRC = util.c scgi_proxy.c xmlrpc_client.c rtorrent-cli.c
+OBJ = ${SRC:.c=.o}
+.c.o:
+	@echo CC $<
+	@${CC} -c ${CFLAGS} $<
 
+rtorrent-cli: ${OBJ}
+	@echo CC -o $@
+	@${CC} -o $@ ${OBJ} ${LDLIBS}
 clean:
-	$(RM) rtorrent-cli rtorrent-cli.o
+	@echo cleaning
+	$(RM) rtorrent-cli ${OBJ}
+
+.PHONY: all clean

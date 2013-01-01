@@ -1,3 +1,22 @@
+/***
+* rtorrent-cli
+* Copyright (C) 2013 Damir Jelić
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation; either version 2
+* of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+***/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,12 +29,16 @@
 #include <xmlrpc-c/base.h>
 #include <xmlrpc-c/client.h>
 
+#include "util.h"
+#include "xmlrpc_client.h"
+
 #define NAME "rtorrent-cli"
 #define VERSION "0.1"
 
 #define DEFAULT_SERVER "http://localhost/RPC2"
 
 static char *server;
+static char *port = "5000";
 static xmlrpc_env env;
 
 typedef struct {
@@ -37,54 +60,6 @@ typedef struct {
     torrent_info **torrents;
     size_t size;
 } torrent_array;
-
-static void *xmalloc(size_t size) {
-    void *p;
-    assert(size > 0);
-
-    if (!(p = malloc(size))) {
-        fprintf(stderr, "Not enough memory!\n");
-        raise(SIGQUIT);
-    }
-
-    return p;
-}
-
-void *xmalloc0(size_t size) {
-    void *p;
-    assert(size > 0);
-
-    if (!(p = calloc(1, size))) {
-        fprintf(stderr, "Not enough memory!\n");
-        raise(SIGQUIT);
-    }
-
-    return p;
-}
-
-static void *xmemdup(const void *p, size_t l) {
-    if (!p)
-        return NULL;
-    else {
-        char *r = xmalloc(l);
-        memcpy(r, p, l);
-        return r;
-    }
-}
-
-static char *xstrdup(const char *s) {
-    if (!s)
-        return NULL;
-
-    return xmemdup(s, strlen(s)+1);
-}
-
-static void xfree(void *p) {
-    if (!p)
-        return;
-
-    free(p);
-}
 
 static void torrent_info_free(torrent_info *info) {
     xfree(info->name);
@@ -116,9 +91,9 @@ static void usage() {
     exit(0);
 }
 
-static void check_fault(xmlrpc_env *env) {
-    if (env->fault_occurred) {
-        fprintf(stderr, "ERROR: %s (%d)\n", env->fault_string, env->fault_code);
+static void check_fault() {
+    if (env.fault_occurred) {
+        fprintf(stderr, "ERROR: %s (%d)\n", env.fault_string, env.fault_code);
         exit(1);
     }
 }
@@ -139,12 +114,17 @@ static void init() {
     check_fault(&env);
 }
 
-static void execute_method(xmlrpc_env *env, xmlrpc_value **result, char *method, xmlrpc_value *params) {
+static void execute_method(xmlrpc_value **result, char *method, xmlrpc_value *params) {
     xmlrpc_server_info *serverInfo;
 
-    serverInfo = xmlrpc_server_info_new(env, server);
-    *result = xmlrpc_client_call_server_params(env, serverInfo, method, params);
-    check_fault(env);
+    serverInfo = xmlrpc_server_info_new(&env, server);
+    *result = xmlrpc_client_call_server_params(&env, serverInfo, method, params);
+    check_fault();
+}
+
+static void execute_proxy_method(xmlrpc_value **result, char *method, xmlrpc_value *params) {
+    *result = xmlrpc_call_scgi_server_params(&env, server, port, method, params);
+    check_fault();
 }
 
 static void get_torrent_name(const char *hash, const char **namestring) {
@@ -153,7 +133,7 @@ static void get_torrent_name(const char *hash, const char **namestring) {
 
     params = xmlrpc_array_new(&env);
     xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, hash));
-    execute_method(&env, &name, "d.name", params);
+    execute_proxy_method(&name, "d.name", params);
 
     assert(xmlrpc_value_type(name) == XMLRPC_TYPE_STRING);
 
@@ -170,7 +150,7 @@ static void get_torrent_int64(const char *hash, char *method, int64_t *value) {
 
     params = xmlrpc_array_new(&env);
     xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, hash));
-    execute_method(&env, &xmlvalue, method, params);
+    execute_proxy_method(&xmlvalue, method, params);
 
     assert(xmlrpc_value_type(xmlvalue) == XMLRPC_TYPE_I8);
 
@@ -211,7 +191,7 @@ static void get_torrent_list(torrent_array **tarray) {
 
     params = xmlrpc_array_new(&env);
     xmlrpc_array_append_item(&env, params, xmlrpc_nil_new(&env));
-    execute_method(&env, &xml_array, "download_list", params);
+    execute_proxy_method(&xml_array, "download_list", params);
 
     assert(xmlrpc_value_type(xml_array) == XMLRPC_TYPE_ARRAY);
 
@@ -219,6 +199,9 @@ static void get_torrent_list(torrent_array **tarray) {
     size = xmlrpc_array_size(&env, xml_array);
     check_fault(&env);
 
+    if (size <= 0)
+        goto finish;
+        
     (*tarray) = torrent_array_new(size);
     for (size_t i = 0; i < size; ++i) {
         size_t length;
@@ -238,6 +221,8 @@ static void get_torrent_list(torrent_array **tarray) {
         xmlrpc_DECREF(item);
         xfree((char*) hash);
     }
+
+finish:
     xmlrpc_DECREF(xml_array);
 }
 
@@ -305,9 +290,11 @@ static void list_torrents()
 {
     int64_t total_size = 0, total_up = 0, total_down = 0;
     char sizestr[20], upstr[20], downstr[20];
-    torrent_array *tarray;
+    torrent_array *tarray = NULL;
 
     get_torrent_list(&tarray);
+    if (tarray == NULL)
+        return;
 
     printf ("%-4s   %-4s  %8s  %-8s  %8s  %8s %9s  %-11s  %s\n", 
             "ID", "Done", "Have", "ETA", "Up", "Down", "Ratio", "Status", "Name");
@@ -346,7 +333,8 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        parse_url(argv[1], &server);
+        //parse_url(argv[1], &server);
+        server = xstrdup(argv[1]);
         argc--;
         for (int i = 1; i < argc; i++)
             argv[i] = argv[i+1];
@@ -362,9 +350,7 @@ int main(int argc, char *argv[])
             case 'h':
                 usage();
             case 'l':
-                init();
-                list_torrents(server);
-                xmlrpc_client_cleanup();
+                list_torrents();
                 break;
             default:
                 usage();
