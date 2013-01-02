@@ -165,6 +165,7 @@ static void get_torrent_list(torrent_array **result) {
     xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.down.rate="));
     xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.down.total="));
     xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.ratio="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.complete="));
     check_fault();
 
     execute_proxy_method(&xml_array, "d.multicall", params);
@@ -227,6 +228,9 @@ static void get_torrent_list(torrent_array **result) {
                     break;
                 case 9:
                     get_int64(item, &(*result)->torrents[i]->ratio);
+                    break;
+                case 10:
+                    get_bool_from_int64(item, &(*result)->torrents[i]->complete);
                     break;
                 default:
                     ;
