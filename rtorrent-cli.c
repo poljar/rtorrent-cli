@@ -43,8 +43,8 @@ static xmlrpc_env env;
 
 typedef struct {
     int64_t id;
-    char hash[41];
-    char *name;
+    const char *hash;
+    const char *name;
     bool complete;
     bool active;
     bool started;
@@ -62,7 +62,8 @@ typedef struct {
 } torrent_array;
 
 static void torrent_info_free(torrent_info *info) {
-    xfree(info->name);
+    xfree((char*) info->name);
+    xfree((char*) info->hash);
     xfree(info);
 }
 
@@ -127,72 +128,47 @@ static void execute_proxy_method(xmlrpc_value **result, char *method, xmlrpc_val
     check_fault();
 }
 
-static void get_torrent_name(const char *hash, const char **namestring) {
-    xmlrpc_value *name, *params;
-    const char *tmp;
-
-    params = xmlrpc_array_new(&env);
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, hash));
-    execute_proxy_method(&name, "d.name", params);
-
-    assert(xmlrpc_value_type(name) == XMLRPC_TYPE_STRING);
-
-    xmlrpc_read_string(&env, name, &tmp);
-    *namestring = xstrdup(tmp);
-
-    xfree((char*) tmp);
-    xmlrpc_DECREF(name);
+static void get_string(xmlrpc_value *value, const char **string) {
+    assert(xmlrpc_value_type(value) == XMLRPC_TYPE_STRING);
+    xmlrpc_read_string(&env, value, string);
+    check_fault();
 }
 
-static void get_torrent_int64(const char *hash, char *method, int64_t *value) {
-    xmlrpc_value *xmlvalue, *params;
+static void get_int64(xmlrpc_value *value, int64_t *num) {
     xmlrpc_int64 tmp;
+    assert(xmlrpc_value_type(value) == XMLRPC_TYPE_I8);
+    xmlrpc_read_i8(&env, value, &tmp);
+    check_fault();
 
-    params = xmlrpc_array_new(&env);
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, hash));
-    execute_proxy_method(&xmlvalue, method, params);
-
-    assert(xmlrpc_value_type(xmlvalue) == XMLRPC_TYPE_I8);
-
-    xmlrpc_read_i8(&env, xmlvalue, &tmp);
-
-    *value = (int64_t) tmp;
+    *num = (int64_t) tmp;
 }
 
-static void get_torrent_info(const char *hash, torrent_info *info) {
-    const char *name;
+static void get_bool_from_int64(xmlrpc_value *value, bool *result) {
     int64_t tmp;
-
-    get_torrent_name(hash, &name);
-    info->name = xstrdup(name);
-
-    get_torrent_int64(hash, "d.complete", &tmp);
-    info->complete = tmp == 1 ? true : false;
-
-    get_torrent_int64(hash, "d.is_active", &tmp);
-    info->active = tmp == 1 ? true : false;
-
-    get_torrent_int64(hash, "d.state", &tmp);
-    info->started = tmp == 1 ? true : false;
-
-    get_torrent_int64(hash, "d.bytes_done", &info->done_bytes);
-    get_torrent_int64(hash, "d.size_bytes", &info->size_bytes);
-    get_torrent_int64(hash, "d.up.rate", &info->up_rate);
-    get_torrent_int64(hash, "d.down.rate", &info->down_rate);
-    get_torrent_int64(hash, "d.down.total", &info->down_total);
-    get_torrent_int64(hash, "d.ratio", &info->ratio);
-
-    xfree((char*) name);
+    get_int64(value, &tmp);
+    *result = tmp == 1 ? true : false;
 }
 
-static void get_torrent_list(torrent_array **tarray) {
-    unsigned int size;
+static void get_torrent_list(torrent_array **result) {
+    size_t size;
     xmlrpc_value *xml_array, *params;
 
     params = xmlrpc_array_new(&env);
-    xmlrpc_array_append_item(&env, params, xmlrpc_nil_new(&env));
-    execute_proxy_method(&xml_array, "download_list", params);
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "main"));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.hash="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.name="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.is_active="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.state="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.bytes_done="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.size_bytes="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.up.rate="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.down.rate="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.down.total="));
+    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.ratio="));
+    check_fault();
 
+    execute_proxy_method(&xml_array, "d.multicall", params);
+    check_fault(&env);
     assert(xmlrpc_value_type(xml_array) == XMLRPC_TYPE_ARRAY);
 
     XMLRPC_ASSERT_ARRAY_OK(xml_array);
@@ -202,24 +178,61 @@ static void get_torrent_list(torrent_array **tarray) {
     if (size <= 0)
         goto finish;
         
-    (*tarray) = torrent_array_new(size);
+    *result = torrent_array_new(size);
     for (size_t i = 0; i < size; ++i) {
-        size_t length;
-        const char *hash;
-        xmlrpc_value *item;
+        size_t tarray_size;
+        xmlrpc_value *tarray = NULL;
 
-        xmlrpc_array_read_item(&env, xml_array, i, &item);
+        xmlrpc_array_read_item(&env, xml_array, i, &tarray);
         check_fault(&env);
+        assert(xmlrpc_value_type(tarray) == XMLRPC_TYPE_ARRAY);
 
-        xmlrpc_read_string_lp(&env, item, &length, &hash);
-        check_fault(&env);
+        XMLRPC_ASSERT_ARRAY_OK(tarray);
+        tarray_size = xmlrpc_array_size(&env, tarray);
 
-        (*tarray)->torrents[i]->id = i+1;
-        strncpy((*tarray)->torrents[i]->hash, hash, 40);
-        get_torrent_info(hash, (*tarray)->torrents[i]);
+        for (size_t j = 0; j < tarray_size; ++j) {
+            xmlrpc_value *item = NULL;
 
-        xmlrpc_DECREF(item);
-        xfree((char*) hash);
+            xmlrpc_array_read_item(&env, tarray, j, &item);
+            check_fault(&env);
+
+            switch (j) {
+                case 0:
+                    get_string(item, &(*result)->torrents[i]->hash);
+                    break;
+                case 1:
+                    get_string(item, &(*result)->torrents[i]->name);
+                    break;
+                case 2:
+                    get_bool_from_int64(item, &(*result)->torrents[i]->active);
+                    break;
+                case 3:
+                    get_bool_from_int64(item, &(*result)->torrents[i]->started);
+                    break;
+                case 4:
+                    get_int64(item, &(*result)->torrents[i]->done_bytes);
+                    break;
+                case 5:
+                    get_int64(item, &(*result)->torrents[i]->size_bytes);
+                    break;
+                case 6:
+                    get_int64(item, &(*result)->torrents[i]->up_rate);
+                    break;
+                case 7:
+                    get_int64(item, &(*result)->torrents[i]->down_rate);
+                    break;
+                case 8:
+                    get_int64(item, &(*result)->torrents[i]->down_total);
+                    break;
+                case 9:
+                    get_int64(item, &(*result)->torrents[i]->ratio);
+                    break;
+                default:
+                    ;
+            }
+            xmlrpc_DECREF(item);
+        }
+        xmlrpc_DECREF(tarray);
     }
 
 finish:
