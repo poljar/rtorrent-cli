@@ -190,6 +190,7 @@ static void get_torrent_list(torrent_array **result) {
         XMLRPC_ASSERT_ARRAY_OK(tarray);
         tarray_size = xmlrpc_array_size(&env, tarray);
 
+        (*result)->torrents[i]->id = i+1;
         for (size_t j = 0; j < tarray_size; ++j) {
             xmlrpc_value *item = NULL;
 
