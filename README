@@ -1,2 +1,2 @@
-This is an rtorrent xml-rcp client. It can talk directly via scgi or 
-through http.
+This is an rtorrent CLI client, using XML-RPC. It can talk directly via SCGI or 
+through HTTP.
