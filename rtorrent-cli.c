@@ -152,20 +152,33 @@ static void get_bool_from_int64(xmlrpc_value *value, bool *result) {
 static void get_torrent_list(torrent_array **result) {
     size_t size;
     xmlrpc_value *xml_array, *params;
+    xmlrpc_value *tmp;
 
     params = xmlrpc_array_new(&env);
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "main"));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.hash="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.name="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.is_active="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.state="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.bytes_done="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.size_bytes="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.up.rate="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.down.rate="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.down.total="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.ratio="));
-    xmlrpc_array_append_item(&env, params, xmlrpc_string_new(&env, "d.complete="));
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "main"));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.hash="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.name="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.is_active="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.state="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.bytes_done="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.size_bytes="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.up.rate="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.down.rate="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.down.total="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.ratio="));
+    xmlrpc_DECREF(tmp);
+    xmlrpc_array_append_item(&env, params, tmp = xmlrpc_string_new(&env, "d.complete="));
+    xmlrpc_DECREF(tmp);
     check_fault();
 
     execute_proxy_method(&xml_array, "d.multicall", params);
