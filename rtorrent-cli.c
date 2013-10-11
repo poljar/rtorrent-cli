@@ -182,23 +182,23 @@ static void get_torrent_list(torrent_array **result) {
     prepare_list_params(&params);
 
     execute_proxy_method(&xml_array, "d.multicall", params);
-    check_fault(&env);
+    check_fault();
     assert(xmlrpc_value_type(xml_array) == XMLRPC_TYPE_ARRAY);
 
     XMLRPC_ASSERT_ARRAY_OK(xml_array);
     size = xmlrpc_array_size(&env, xml_array);
-    check_fault(&env);
+    check_fault();
 
     if (size <= 0)
         goto finish;
-        
+
     *result = torrent_array_new(size);
     for (size_t i = 0; i < size; ++i) {
         size_t tarray_size;
         xmlrpc_value *tarray = NULL;
 
         xmlrpc_array_read_item(&env, xml_array, i, &tarray);
-        check_fault(&env);
+        check_fault();
         assert(xmlrpc_value_type(tarray) == XMLRPC_TYPE_ARRAY);
 
         XMLRPC_ASSERT_ARRAY_OK(tarray);
@@ -209,7 +209,7 @@ static void get_torrent_list(torrent_array **result) {
             xmlrpc_value *item = NULL;
 
             xmlrpc_array_read_item(&env, tarray, j, &item);
-            check_fault(&env);
+            check_fault();
 
             switch (j) {
                 case 0:
