@@ -47,6 +47,12 @@ static enum {
     LIST
 } action = NONE;
 
+static enum {
+    INVALID_CONNECTION,
+    SCGI_CONNECTION,
+    HTTP_CONNECTION
+} connection_type = INVALID_CONNECTION;
+
 typedef struct {
     int64_t id;
     const char *hash;
@@ -105,28 +111,45 @@ static void check_fault() {
     }
 }
 
-static void parse_url(const char *urlArg, char **url) {
-    if (strstr(urlArg, "://") != 0)
-        *url = xstrdup(urlArg);
-    else {
-        *url = xmalloc(strlen(urlArg)+12);
-        sprintf(*url, "http://%s/RPC2", urlArg);
-    }
-}
+static void parse_url(char **argv, int *argc, char **url) {
+    if (*argv[1] != '-') {
+        const char *urlArg = argv[1];
 
-static void init() {
-    xmlrpc_env_init(&env);
+        if (strstr(urlArg, "http://") != NULL) {
+            connection_type = HTTP_CONNECTION;
 
-    xmlrpc_client_init2(&env, XMLRPC_CLIENT_NO_FLAGS, NAME, VERSION, NULL, 0);
-    check_fault(&env);
+            if (strstr(urlArg, "RPC2") == NULL) {
+                *url = xmalloc(strlen(urlArg)+5);
+                sprintf(*url, "%s/RPC2", urlArg);
+                printf("%s\n", *url);
+            } else
+                *url = xstrdup(urlArg);
+
+        } else {
+            connection_type = SCGI_CONNECTION;
+            *url = xstrdup(urlArg);
+        }
+
+        *argc -= 1;
+        for (int i = 1; i < *argc; ++i)
+            argv[i] = argv[i + 1];
+
+    } else
+        server = xstrdup(DEFAULT_SERVER);
+
 }
 
 static void execute_method(xmlrpc_value **result, char *method, xmlrpc_value *params) {
     xmlrpc_server_info *serverInfo;
 
+    xmlrpc_client_init2(&env, XMLRPC_CLIENT_NO_FLAGS, NAME, VERSION, NULL, 0);
+    check_fault();
+
     serverInfo = xmlrpc_server_info_new(&env, server);
     *result = xmlrpc_client_call_server_params(&env, serverInfo, method, params);
     check_fault();
+
+    xmlrpc_client_cleanup();
 }
 
 static void execute_proxy_method(xmlrpc_value **result, char *method, xmlrpc_value *params) {
@@ -181,7 +204,19 @@ static void get_torrent_list(torrent_array **result) {
 
     prepare_list_params(&params);
 
-    execute_proxy_method(&xml_array, "d.multicall", params);
+    switch (connection_type) {
+        case HTTP_CONNECTION:
+            execute_method(&xml_array, "d.multicall", params);
+            break;
+        case SCGI_CONNECTION:
+            execute_proxy_method(&xml_array, "d.multicall", params);
+            break;
+        default:
+            printf("Code should not be reached at %s:%u, function %s(). Aborting.", __FILE__, __LINE__, __func__);
+            abort();
+            break;
+    }
+
     check_fault();
     assert(xmlrpc_value_type(xml_array) == XMLRPC_TYPE_ARRAY);
 
@@ -356,19 +391,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    if (*argv[1] != '-') {
-        if (argc < 3) {
-            usage();
-            return 0;
-        }
-
-        //parse_url(argv[1], &server);
-        server = xstrdup(argv[1]);
-        argc--;
-        for (int i = 1; i < argc; i++)
-            argv[i] = argv[i+1];
-    } else
-        server = xstrdup(DEFAULT_SERVER);
+    parse_url(argv, &argc, &server);
 
     for (;;) {
         int opt = getopt_long(argc, argv, "lh", opts, NULL);
