@@ -273,16 +273,16 @@ static void eta_to_string(char *buf, size_t  buflen, int64_t eta) {
 }
 
 static void byte_to_string(char *buf, size_t buflen, int64_t byte) {
-    if (byte < 1024)
-        snprintf (buf, buflen, "%" PRId64 "B", byte);
-    else if (byte < 1048576)
-        snprintf (buf, buflen, "%.1fKiB", (double) byte / 1024);
-    else if (byte < 1073741824)
-        snprintf (buf, buflen, "%.1fMiB", (double) byte / 1048576);
-    else if (byte < 1099511627776)
-        snprintf (buf, buflen, "%.1fGiB", (double) byte / 1073741824);
-    else if (byte < 1125899906842624)
-        snprintf (buf, buflen, "%.1fTiB", (double) byte / 1099511627776);
+    if (byte < (1 << 10))
+        snprintf(buf, buflen, "%" PRId64 "B", byte);
+    else if (byte < (1 << 20))
+        snprintf(buf, buflen, "%.1fKiB", (double) byte / (1 << 10));
+    else if (byte < (1 << 30))
+        snprintf(buf, buflen, "%.1fMiB", (double) byte / (1 << 20));
+    else if (byte < (1L << 40))
+        snprintf(buf, buflen, "%.1fGiB", (double) byte / (1L << 30));
+    else if (byte < (1L << 50))
+        snprintf(buf, buflen, "%.1fTiB", (double) byte / (1LL << 40));
     else
         snprintf(buf, buflen, "Inf");
 }
