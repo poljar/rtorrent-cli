@@ -411,8 +411,12 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (action == LIST) {
-        list_torrents();
+    switch (action) {
+        case LIST:
+            list_torrents();
+            break;
+        default:
+            assert_not_reached();
     }
 
 quit:
