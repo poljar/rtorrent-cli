@@ -149,6 +149,7 @@ static void execute_method(xmlrpc_value **result, char *method, xmlrpc_value *pa
     *result = xmlrpc_client_call_server_params(&env, serverInfo, method, params);
     check_fault();
 
+    xmlrpc_server_info_free(serverInfo);
     xmlrpc_client_cleanup();
 }
 
