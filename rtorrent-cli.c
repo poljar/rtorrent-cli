@@ -41,6 +41,12 @@ static char *server;
 static char *port = "5000";
 static xmlrpc_env env;
 
+static enum {
+    NONE,
+    USAGE,
+    LIST
+} action = NONE;
+
 typedef struct {
     int64_t id;
     const char *hash;
@@ -373,12 +379,17 @@ int main(int argc, char *argv[]) {
             case 'h':
                 usage();
             case 'l':
-                list_torrents();
+                action = action == NONE ? LIST : USAGE;
                 break;
             default:
                 usage();
         }
     }
+
+    if (action == LIST) {
+        list_torrents();
+    }
+
     xfree(server);
     xmlrpc_env_clean(&env);
 
