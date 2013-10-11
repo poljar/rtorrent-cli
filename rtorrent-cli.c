@@ -213,8 +213,7 @@ static void get_torrent_list(torrent_array **result) {
             execute_proxy_method(&xml_array, "d.multicall", params);
             break;
         default:
-            printf("Code should not be reached at %s:%u, function %s(). Aborting.", __FILE__, __LINE__, __func__);
-            abort();
+            assert_not_reached();
             break;
     }
 

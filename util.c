@@ -85,3 +85,8 @@ void error(const char *msg) {
     perror(msg);
     exit(EXIT_FAILURE);
 }
+
+void assert_not_reached() {
+    printf("Code should not be reached at %s:%u, function %s(). Aborting.", __FILE__, __LINE__, __func__);
+    abort();
+}

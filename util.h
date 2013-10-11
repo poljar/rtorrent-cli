@@ -30,6 +30,7 @@ char *xstrdup(const char *s);
 void xfree(void *p);
 
 void error(const char *msg);
+void assert_not_reached();
 
 
 #endif
