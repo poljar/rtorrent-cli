@@ -1,4 +1,4 @@
-CC=gcc
+CC=clang
 CFLAGS := -Wall -Wextra -pedantic -std=c99 -g $(CFLAGS) -D_POSIX_SOURCE
 LDLIBS := -lxmlrpc -lxmlrpc_util -lxmlrpc_client
 
