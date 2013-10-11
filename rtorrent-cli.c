@@ -401,11 +401,13 @@ int main(int argc, char *argv[]) {
         switch (opt) {
             case 'h':
                 usage();
+                goto quit;
             case 'l':
                 action = action == NONE ? LIST : USAGE;
                 break;
             default:
                 usage();
+                goto quit;
         }
     }
 
@@ -413,6 +415,7 @@ int main(int argc, char *argv[]) {
         list_torrents();
     }
 
+quit:
     xfree(server);
     xmlrpc_env_clean(&env);
 
