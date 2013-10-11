@@ -50,7 +50,7 @@ static void parse_xml(xmlrpc_env *env, char *xml, int xml_size, xmlrpc_value **r
 
     if (respEnv.fault_occurred) {
         xmlrpc_env_set_fault_formatted(env, respEnv.fault_code,
-               "Unable to make sense of XML-RPC response from server. " 
+               "Unable to make sense of XML-RPC response from server. "
                "%s. Use XMLRPC_TRACE_XML to see for yourself",
                respEnv.fault_string);
     }
@@ -90,7 +90,7 @@ xmlrpc_value *xmlrpc_call_scgi_server_params(xmlrpc_env *env, const char *server
     */
 
     parse_xml(env, buff, strlen(buff), &result, &fault_code, &fault_string);
-        
+
 finish:
     if (sockfd != -1)
         close(sockfd);

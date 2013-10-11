@@ -88,7 +88,7 @@ static void torrent_array_free(torrent_array *array) {
 }
 
 static void usage() {
-    printf ("usage bla \n");
+    printf("usage bla \n");
     exit(0);
 }
 
@@ -253,17 +253,17 @@ finish:
 
 static void eta_to_string(char *buf, size_t  buflen, int64_t eta) {
     if (eta < 0)
-        snprintf (buf, buflen, "Unknown");
+        snprintf(buf, buflen, "Unknown");
     else if (eta < 60)
-        snprintf (buf, buflen, "%" PRId64 " sec", eta);
+        snprintf(buf, buflen, "%" PRId64 " sec", eta);
     else if (eta < (60 * 60))
-        snprintf (buf, buflen, "%.1f min", (double) eta / 60);
+        snprintf(buf, buflen, "%.1f min", (double) eta / 60);
     else if (eta < (60 * 60 * 24))
-        snprintf (buf, buflen, "%.1f hrs", (double) eta / (60 * 60));
+        snprintf(buf, buflen, "%.1f hrs", (double) eta / (60 * 60));
     else if (eta < (60 * 60 * 24 * 365))
-        snprintf (buf, buflen, "%1d days", (int) eta / (60 * 60 * 24));
+        snprintf(buf, buflen, "%1d days", (int) eta / (60 * 60 * 24));
     else
-        snprintf (buf, buflen, "Inf");
+        snprintf(buf, buflen, "Inf");
 }
 
 static void byte_to_string(char *buf, size_t buflen, int64_t byte) {
@@ -278,7 +278,7 @@ static void byte_to_string(char *buf, size_t buflen, int64_t byte) {
     else if (byte < 1125899906842624)
         snprintf (buf, buflen, "%.1fTiB", (double) byte / 1099511627776);
     else
-        snprintf (buf, buflen, "Inf");
+        snprintf(buf, buflen, "Inf");
 }
 
 static void print_torrent(torrent_info *info) {
@@ -306,13 +306,12 @@ static void print_torrent(torrent_info *info) {
     else
         strcpy(status, "Active");
 
-    printf("%4" PRId64 ". %4d%% %9s  %-8s  %8s  %8s %8.2f   %-11s  %s\n", 
+    printf("%4" PRId64 ". %4d%% %9s  %-8s  %8s  %8s %8.2f   %-11s  %s\n",
            info->id, done, have, etastr, up_rate, down_rate,
            ratio, status, info->name);
 }
 
-static void list_torrents()
-{
+static void list_torrents() {
     int64_t total_size = 0, total_up = 0, total_down = 0;
     char sizestr[20], upstr[20], downstr[20];
     torrent_array *tarray = NULL;
@@ -321,7 +320,7 @@ static void list_torrents()
     if (tarray == NULL)
         return;
 
-    printf ("%-4s   %-4s  %8s  %-8s  %8s  %8s %9s  %-11s  %s\n", 
+    printf("%-4s   %-4s  %8s  %-8s  %8s  %8s %9s  %-11s  %s\n",
             "ID", "Done", "Have", "ETA", "Up", "Down", "Ratio", "Status", "Name");
     for (size_t i = 0; i < tarray->size; ++i) {
         print_torrent(tarray->torrents[i]);
@@ -333,14 +332,13 @@ static void list_torrents()
     byte_to_string(sizestr, 20, total_size);
     byte_to_string(upstr, 20, total_up);
     byte_to_string(downstr, 20, total_down);
-    printf ("Sum:        %9s            %8s  %8s\n",
+    printf("Sum:        %9s            %8s  %8s\n",
             sizestr, upstr, downstr);
 
     torrent_array_free(tarray);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     static const struct option opts[] = {
         { "list", no_argument, 0, 'l' },
         { "help", no_argument, 0, 'h' },
